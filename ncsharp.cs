@@ -44,7 +44,10 @@ class X {
 	static void ShowHelp (int status = 1, bool showBanner = false)
 	{
 		if (showBanner)
-			Console.Error.WriteLine ("Network.framework-based 'netcat' app built with C#");
+			Console.Error.WriteLine (
+				"Network.framework-based 'netcat' app built with C#\n" +
+				"nwcat [options] name [port]"
+				);
 		options.WriteOptionDescriptions(Console.Error);
 		Environment.Exit (status);
 	}
@@ -341,10 +344,16 @@ class X {
 			// If the context is marked as complete, and is the final context,
 			// we're read-closed.
 			if (isComplete) {
-				if (context != null && context.IsFinal)
+				if (context != null && context.IsFinal){
+					if (verbose)
+						warn ("Exiting because isComplete && context.IsFinal");
 					Environment.Exit (0);
-				if (data == IntPtr.Zero)
+				}
+				if (data == IntPtr.Zero) {
+					if (verbose)
+						warn ($"Exiting because isComplete && data == zero;  error={error}");
 					Environment.Exit (0);
+				}
 			}
 
 			// If there was no error in receiving, request more data

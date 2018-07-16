@@ -18,6 +18,7 @@ Which will produce the standalone `ncsharp` tool:
 ```
 $ ./ncsharp
 Network.framework-based 'netcat' app built with C#
+nwcat [options] name [port]
   -4                         Use IPV4
   -6                         Use IPV6
   -b                         Use Bonjour
@@ -31,6 +32,14 @@ Network.framework-based 'netcat' app built with C#
   -h, --help                 Show this help
 ```
 
+By default connections use TCP, if you want to use UDP, pass the `-u` flag.
+
+The `-v` flag provides verbose logging of what is taking place
+
+The "name" can either be a hostname resolved with DNS, an IPV4 or IPV6
+address, or in the case of bonjour a Bonjour name.
+
+The port can be either a number (like 80), or a name, like "http"
 
 # Examples
 
@@ -48,7 +57,25 @@ $ ./ncsharp -t www.google.com 443
 $
 ```
 
-## 
+## Using Bonjour
+
+You can either connect to a Bonjour service, or listen on a name for a
+bonjour service and do this over TCP or UDP.
+
+To register a Bonjour service, specify the service name and the port
+you want to bind it to.  For example to set the bonjour name to
+migueldeicaza and bind this to port 9000 use this:
+
+```
+$ ./ncsharp --listener -b migueldeicaza 9000
+```
+
+To connect to it from another window, merely specify the name:
+
+```
+$ ./ncsharp -b migueldeicaza
+```
+
 
 # Debugging
 

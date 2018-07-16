@@ -27,5 +27,5 @@ run: ncsharp.exe
 	MONO_PATH=$(XAMMAC_PATH) DYLD_LIBRARY_PATH=$(DYLD) mono --debug ncsharp.exe $(COMMAND)
 
 
-bundle: nwncsharp.exe
-	mkbundle --simple nwncsharp.exe -o ncsharp -L $(XAMMAC_PATH) --library $(DYLD)/libxammac.dylib
+bundle: ncsharp.exe
+	mkbundle --simple ncsharp.exe -o ncsharp -L $(XAMMAC_PATH) --library $(DYLD)/libxammac.dylib
