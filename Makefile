@@ -13,8 +13,8 @@ endif
 
 all: ncsharp.exe
 
-ncsharp.exe: ncsharp.cs
-	mcs -r:$(XAMMAC_PATH)/Xamarin.Mac.dll ncsharp.cs /Library/Frameworks/Mono.framework/Versions/Current//lib/mono-source-libs/Options.cs
+ncsharp.exe: ncsharp.cs Makefile
+	mcs -g -r:$(XAMMAC_PATH)/Xamarin.Mac.dll ncsharp.cs /Library/Frameworks/Mono.framework/Versions/Current//lib/mono-source-libs/Options.cs
 
 
 

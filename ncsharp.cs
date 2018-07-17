@@ -172,7 +172,9 @@ class X {
 		string address = bonjour ? null : host;
 		if (address != null || port != null){
 			NWEndpoint localEndpoint = NWEndpoint.Create (address != null ? address : "::", port != null ? port : "0");
+			Console.WriteLine ("Getting {0} and {1}", address != null ? address : "::", port != null ? port : "0");
 			parameters.LocalEndpoint = localEndpoint;
+			Console.WriteLine ("With port: " + localEndpoint.Port);
 		}
 
 		var listener = NWListener.Create (parameters);
@@ -302,63 +304,67 @@ class X {
 
 	static void SendLoop (NWConnection connection)
 	{
-		var buffer = new byte [8192];
-		Stream inputStream = File.Open ("/dev/tty", FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-		int n;
-
-		while ((n = inputStream.Read (buffer, 0, buffer.Length)) > 0){
-			if (verbose)
-				warn ($"Sending {n} bytes");
-			// Every send is marked as complete. This has no effect with the default message context for TCP,
-                        // but is required for UDP to indicate the end of a packet.
-			connection.Send (buffer, start: 0, length: n, context: NWContentContext.DefaultMessage, isComplete: true, callback: (NWError error) => {
-				if (error != null)
-					warn ($"send error: {error.ErrorCode}");
-			});
-		}
-		// End of file
+		const int STDIN_FILENO = 0;
 		
-		// Send a "write close" on the connection, by sending
-		// null data with the final message context marked as
-		// complete.  Note that it is valid to send with null
-		// data but a non-null context.
-		connection.Send ((byte [] )null, context: NWContentContext.FinalMessage, isComplete: true, callback: (NWError error) => {
-			if (error != null)
-				warn ($"send error: {error.ErrorCode}");
+		DispatchIO.Read (STDIN_FILENO, 8192, DispatchQueue.MainQueue, (DispatchData readData, int stdinError)=>{
+			if (stdinError != 0)
+				warn ($"Standard input error: {stdinError}");
+			else if (readData == null|| readData.Size == 0){
+				// Null data represent EOF
+				// Send a "write close" on the connection, by sending
+				// null data with the final message context marked as
+				// complete.  Note that it is valid to send with null
+				// data but a non-null context.
+				connection.Send ((byte [] )null, context: NWContentContext.FinalMessage, isComplete: true, callback: (NWError error) => {
+					if (error != null)
+						warn ($"send error: {error.ErrorCode}");
+				});
+				// Stop reading from stdin, do not schedule another SendLoop
+			} else {
+				connection.Send (readData, context: NWContentContext.DefaultMessage, isComplete: true, callback: (NWError error) => {
+					if (error != null)
+						warn ($"send error: {error.ErrorCode}");
+					else {
+						// continue reading from stdin
+						SendLoop (connection);
+					}
+				});
+			}
+			
 		});
 	}
 
-	static void ReceiveLoop (Stream output, NWConnection connection)
+	static void ReceiveLoop (NWConnection connection)
 	{
-		if (verbose)
-			warn ("Start Receive Loop");
-		
-		connection.Receive (1, uint.MaxValue, (IntPtr data, ulong dataSize, NWContentContext context, bool isComplete, NWError error)=>{
-			if (data != IntPtr.Zero){
-				// If there is content, write it to stdout asynchronously
-				var copy = new byte [dataSize];
-				Marshal.Copy (data, copy, 0, (int)dataSize);
-				output.Write (copy, 0, copy.Length);
-				output.Flush ();
-			} 
-			// If the context is marked as complete, and is the final context,
-			// we're read-closed.
-			if (isComplete) {
-				if (context != null && context.IsFinal){
-					if (verbose)
-						warn ("Exiting because isComplete && context.IsFinal");
-					Environment.Exit (0);
+		connection.ReceiveData (1, uint.MaxValue, (DispatchData dispatchData, NWContentContext context, bool isComplete, NWError error)=>{
+			Action scheduleNext = () => {
+				// If the context is marked as complete, and is the final context,
+				// we're read-closed.
+				if (isComplete) {
+					if (context != null && context.IsFinal){
+						if (verbose)
+							warn ("Exiting because isComplete && context.IsFinal");
+						Environment.Exit (0);
+					}
+					if (dispatchData == null) {
+						if (verbose)
+							warn ($"Exiting because isComplete && data == zero;  error={error}");
+						Environment.Exit (0);
+					}
 				}
-				if (data == IntPtr.Zero) {
-					if (verbose)
-						warn ($"Exiting because isComplete && data == zero;  error={error}");
-					Environment.Exit (0);
-				}
-			}
-
-			// If there was no error in receiving, request more data
-			if (error == null)
-				ReceiveLoop (output, connection);
+				if (error == null)
+					ReceiveLoop (connection);
+					
+			};
+			if (dispatchData != null){
+				const int STDOUT_FILENO = 1;
+				DispatchIO.Write (STDOUT_FILENO, dispatchData, DispatchQueue.MainQueue, (data, stdoutError) => {
+					if (stdoutError != 0)
+						warn ("stdout write error");
+					scheduleNext ();
+				});
+			} else 
+				scheduleNext ();
 		});
 	}
 	
@@ -366,10 +372,13 @@ class X {
 	{
 		// Start reading from stdin
 		if (!detached)
-			ThreadPool.QueueUserWorkItem ((x) => { SendLoop (connection); });
+			SendLoop (connection); 
 
+		if (verbose)
+			warn ("Start Receive Loop");
+		
 		// Start reading from the connection
-		ReceiveLoop (File.Open ("/dev/tty", FileMode.Open, FileAccess.Write, FileShare.ReadWrite), connection);
+		ReceiveLoop (connection);
 	}
 	
 }
