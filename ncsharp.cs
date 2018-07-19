@@ -191,7 +191,7 @@ class X {
 
 		listener.SetQueue (DispatchQueue.MainQueue);
 		listener.SetStateChangedHandler ((listenerState,error)=>{
-			var errno = error == null ? 0 : error.ErrorCode;
+			var errno = (SslStatus) (error == null ? 0 : error.ErrorCode);
 			switch (listenerState){
 			case NWListenerState.Waiting:
 				if (verbose)
@@ -280,13 +280,13 @@ class X {
 		
 		connection.SetStateChangeHandler ((state, error) => {
 			var remote = connection.Endpoint;
-			int errno = error != null ? error.ErrorCode : 0;
+			var errno = (SslStatus)(error != null ? error.ErrorCode : 0);
 			switch (state){
 			case NWConnectionState.Waiting:
 				warn ($"Connect to {remote.Hostname} port {remote.Port} udp={useUdp} failed, is waiting");
 				break;
 			case NWConnectionState.Failed:
-				warn ($"Connect to {remote.Hostname} port {remote.Port} udp={useUdp} failed");
+				warn ($"Connect to {remote.Hostname} port {remote.Port} udp={useUdp} failed, error {errno}");
 				break;
 			case NWConnectionState.Ready:
 				if (verbose)

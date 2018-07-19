@@ -43,7 +43,9 @@ The port can be either a number (like 80), or a name, like "http"
 
 # Examples
 
-## Connect to www.google.com http server:
+## Connect to www.google.com http server
+
+This shows how to use the tool connecting to port 80
 
 ```
 $ ./ncsharp www.google.com 80
@@ -52,8 +54,11 @@ $
 
 ## Connect to www.google.com using https:
 
+This shows how to use the tool connecting to the "https" port, we let
+the Network framework sort out what it is:
+
 ```
-$ ./ncsharp -t www.google.com 443
+$ ./ncsharp -t www.google.com https
 $
 ```
 
